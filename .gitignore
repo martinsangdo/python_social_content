@@ -208,3 +208,4 @@ __marimo__/
 .vscode
 *.mp4
 *.mp3
+.prompt
