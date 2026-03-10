@@ -210,3 +210,4 @@ __marimo__/
 *.mp3
 .prompt
 secret_files
+*token.json
