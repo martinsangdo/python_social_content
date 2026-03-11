@@ -43,3 +43,16 @@ def draw_wrapped_text(draw, position, text, font, max_width, fill=(255,255,255),
     for line in lines:
         draw.text((x, y), line, font=font, fill=fill)
         y += font.size + line_spacing
+
+def get_first_file(folder_path: str, extension: str) -> tuple[str, str] | None:
+    """Returns (full_path, filename_without_extension) of the first file with the given extension."""
+    import os
+    ext = extension if extension.startswith(".") else f".{extension}"
+    files = sorted(
+        f for f in os.listdir(folder_path)
+        if os.path.isfile(os.path.join(folder_path, f)) and f.endswith(ext)
+    )
+    if not files:
+        return None
+    first_file = files[0]
+    return os.path.join(folder_path, first_file), os.path.splitext(first_file)[0]
