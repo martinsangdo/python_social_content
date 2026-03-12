@@ -56,3 +56,17 @@ def get_first_file(folder_path: str, extension: str) -> tuple[str, str] | None:
         return None
     first_file = files[0]
     return os.path.join(folder_path, first_file), os.path.splitext(first_file)[0]
+
+def rename_files(folder_path: str, extension: str, start_index: int = 1) -> None:
+    """Rename all files in a folder with a specific extension, starting from a given index."""
+    ext = extension if extension.startswith(".") else f".{extension}"
+    files = sorted(
+        f for f in os.listdir(folder_path)
+        if os.path.isfile(os.path.join(folder_path, f)) and f.endswith(ext)
+    )
+
+    for i, filename in enumerate(files, start=start_index):
+        src = os.path.join(folder_path, filename)
+        dst = os.path.join(folder_path, f"{i}{ext}")
+        os.rename(src, dst)
+        print(f"{filename} → {i}{ext}")
