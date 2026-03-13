@@ -3,7 +3,6 @@
 
 # %%
 import os
-import pickle
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -163,7 +162,7 @@ def auto_add_comment():
 
 # %%
 #testing in jupyter
-sys.argv = ['script.py', '-type', 'comment']
+# sys.argv = ['script.py', '-type', 'comment']
 #load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('-type', type=str, default=None, help='Action type: upload_video or comment')
