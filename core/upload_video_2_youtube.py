@@ -42,7 +42,7 @@ YT_SECRET_FILEPATH = PROJECT_CORE_FOLDER + 'secret_files/martin_yt_token.json' #
 # %%
 TITLE_PREFIX = 'Math games for your kids at the spare time - Puzzle '
 DESCRIPTION = """
-Download more than 300 Math Games as a printable PDF file for your kids here: 
+300+ Math Games as a printable PDF file for your kids here: 
 
 https://sangdomartin.gumroad.com/l/mathgames
 
@@ -61,7 +61,7 @@ Detect shape
 Bee house
 """
 COMMENT = """
-Download more than 300 Math Games as a printable PDF file for your kids here: 
+300+ Math Games as a printable PDF file for your kids here: 
 
 https://sangdomartin.gumroad.com/l/mathgames
 """
