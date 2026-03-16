@@ -41,7 +41,17 @@ def draw_wrapped_text(draw, position, text, font, max_width, fill=(255,255,255),
     lines = wrap_text(text, font, max_width, draw)
 
     for line in lines:
-        draw.text((x, y), line, font=font, fill=fill)
+        draw.text((x, y), line, font=font, fill=fill)   #no border
+        y += font.size + line_spacing
+
+def draw_wrapped_text_with_border(draw, position, text, font, max_width, fill=(255,255,255), line_spacing=6):
+    x, y = position
+    lines = wrap_text(text, font, max_width, draw)
+
+    for line in lines:
+        draw.text((x, y), line, font=font, fill=fill,
+            stroke_width=5,
+            stroke_fill="black")
         y += font.size + line_spacing
 
 def get_first_file(folder_path: str, extension: str) -> tuple[str, str] | None:
