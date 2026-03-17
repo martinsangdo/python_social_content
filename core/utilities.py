@@ -1,5 +1,6 @@
 from pathlib import Path
 import random
+import os
 
 def list_video_in_path(folder_path):
     return list(Path(folder_path).glob("*.mp4"))
