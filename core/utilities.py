@@ -57,7 +57,6 @@ def draw_wrapped_text_with_border(draw, position, text, font, max_width, fill=(2
 
 def get_first_file(folder_path: str, extension: str) -> tuple[str, str] | None:
     """Returns (full_path, filename_without_extension) of the first file with the given extension."""
-    import os
     ext = extension if extension.startswith(".") else f".{extension}"
     files = sorted(
         f for f in os.listdir(folder_path)
