@@ -46,7 +46,9 @@ SCOPES = [
 
 # %%
 DATA_FOLDER = '/Users/sangdo/Downloads/math_games_video/'
-VIDEO_FOLDER = f'{DATA_FOLDER}output/'   #contain mp4 files
+VIDEO_FOLDER = f'{DATA_FOLDER}output/'   #contain mp4 files which NOT yet uploaded to YT
+
+UPLOADED_VIDEO_FOLDER = f'{VIDEO_FOLDER}yt_uploaded'   #contain mp4 files which uploaded to YT, waiting for comment and FB post
 
 # %%
 COMMENT = os.getenv('COMMENT_CONTENT').replace('\\n', '\n')
@@ -136,8 +138,11 @@ def auto_upload_video():
     print('Begin uploading: ' + first_mp4_file)
     new_video_id = upload_video(first_mp4_file, item['title'], item['description'])
     print('===== Done uploading: ' + first_mp4_file)
-    #rename the file
-    os.rename(first_mp4_file, VIDEO_FOLDER + new_video_id + ".cmt")   #need to comment in this video
+    #rename and move the file to another path
+    os.rename(first_mp4_file, UPLOADED_VIDEO_FOLDER + new_video_id + ".cmt")   #need to comment in this video
+
+# %% [markdown]
+# <h2>Comment on YT video</h2>
 
 # %%
 def add_comment(video_id, comment_text):
@@ -161,11 +166,15 @@ def add_comment(video_id, comment_text):
 #
 def auto_add_comment():
     #find the first file in path
-    video_path, video_id = get_first_file(VIDEO_FOLDER, 'cmt')
+    video_path, video_id = get_first_file(UPLOADED_VIDEO_FOLDER, 'cmt')
     add_comment(video_id, COMMENT)
-    os.rename(video_path, VIDEO_FOLDER + video_id + ".fb")   #need to post to FB this video
+    os.rename(video_path, UPLOADED_VIDEO_FOLDER + video_id + ".mp4")   #prepate to post to FB this video
+
+# %% [markdown]
+# <h2>Rename many files in a folder</h2>
 
 # %%
+
 # rename_files(VIDEO_FOLDER, 'mp4', 13)
 # rename_files('/Users/sangdo/Downloads/math_games_video/img/', 'png', 1)
 
@@ -184,6 +193,26 @@ def get_all_titles(file_path):
 # titles = get_all_titles(TITLE_FILEPATH)
 # for title in titles:
 #     print(title)
+
+# %%
+def remove_duplicate_titles(file_path):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    seen = set()
+    unique_data = []
+    for item in data:
+        if item['title'] not in seen:
+            seen.add(item['title'])
+            unique_data.append(item)
+
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(unique_data, f, ensure_ascii=False, indent=2)
+
+    print(f"Before: {len(data)} items, After: {len(unique_data)} items, Removed: {len(data) - len(unique_data)}")
+
+# Usage
+# remove_duplicate_titles(TITLE_FILEPATH)
 
 # %%
 #testing in jupyter
