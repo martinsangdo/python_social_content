@@ -15,7 +15,14 @@ import random
 import shutil
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', 'core')))   #import sibling files
+# Works in both .py files and Jupyter notebooks
+try:
+    base_path = os.path.dirname(__file__)  # works in .py files
+except NameError:
+    base_path = os.getcwd()                # fallback for Jupyter notebooks
+
+core_path = os.path.abspath(os.path.join(base_path, '..', 'core'))
+sys.path.append(core_path)
 
 import importlib
 import utilities
@@ -48,7 +55,7 @@ SCOPES = [
 DATA_FOLDER = '/Users/sangdo/Downloads/math_games_video/'
 VIDEO_FOLDER = f'{DATA_FOLDER}output/'   #contain mp4 files which NOT yet uploaded to YT
 
-UPLOADED_VIDEO_FOLDER = f'{VIDEO_FOLDER}yt_uploaded'   #contain mp4 files which uploaded to YT, waiting for comment and FB post
+UPLOADED_VIDEO_FOLDER = f'{VIDEO_FOLDER}yt_uploaded/'   #contain mp4 files which uploaded to YT, waiting for comment and FB post
 
 # %%
 COMMENT = os.getenv('COMMENT_CONTENT').replace('\\n', '\n')
