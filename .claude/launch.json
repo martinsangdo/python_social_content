@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "image_editor",
+      "runtimeExecutable": "python3.10",
+      "runtimeArgs": ["-m", "streamlit", "run", "image_editor/app.py", "--server.headless", "true", "--server.port", "8502"],
+      "port": 8502
+    },
+    {
+      "name": "chat_",
+      "runtimeExecutable": "python3.10",
+      "runtimeArgs": ["-m", "streamlit", "run", "chat_/app.py", "--server.headless", "true", "--server.port", "8501"],
+      "port": 8501
+    }
+  ]
+}

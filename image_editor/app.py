@@ -1,5 +1,5 @@
 # %% [markdown]
-# <h2>Generate an image from a text description and upload it to Supabase storage</h2>
+# <h2>Edit an uploaded image from a text description and upload the result to Supabase storage</h2>
 
 import os
 import sys
@@ -35,11 +35,12 @@ if not os.environ.get("REPLICATE_API_TOKEN"):
     raise RuntimeError("REPLICATE_API_TOKEN is not set. Add REPLICATE_API_TOKEN=<your replicate api key> to .env")
 
 BUCKET_NAME = "my_bucket_1"
-IMAGE_MODEL = "black-forest-labs/flux-2-pro"
-DATA_FOLDER = os.path.join(base_path, "generated_images")
+IMAGE_EDIT_MODEL = "black-forest-labs/flux-kontext-pro"
+UPLOAD_FOLDER = os.path.join(base_path, "uploaded_images")
+EDITED_FOLDER = os.path.join(base_path, "edited_images")
 
 
-# --- image generation (media/replicate_test.py logic) ---
+# --- image editing (chat_/app.py generate_image logic, adapted for image-to-image) ---
 
 def _download(url: str, dest_folder: str, default_name: str) -> str:
     import requests
@@ -68,18 +69,21 @@ def _extract_urls(output):
     return [str(output)]
 
 
-def generate_image(prompt: str, model: str = IMAGE_MODEL, dest_folder: str = DATA_FOLDER, **extra_args):
+def edit_image(prompt: str, input_image_path: str, model: str = IMAGE_EDIT_MODEL,
+               dest_folder: str = EDITED_FOLDER, **extra_args):
     extra_args.setdefault("output_format", "png")
-    output = replicate.run(
-        model,
-        input={
-            "prompt": prompt,
-            **extra_args,
-        },
-    )
+    with open(input_image_path, "rb") as image_file:
+        output = replicate.run(
+            model,
+            input={
+                "prompt": prompt,
+                "input_image": image_file,
+                **extra_args,
+            },
+        )
 
     urls = _extract_urls(output)
-    return [_download(url, dest_folder, f"image_{i}.png") for i, url in enumerate(urls)]
+    return [_download(url, dest_folder, f"edited_{i}.png") for i, url in enumerate(urls)]
 
 
 # --- upload to Supabase (media/upload_test.py logic) ---
@@ -106,22 +110,45 @@ def upload_file(file_path: str, bucket_name: str = BUCKET_NAME, dest_path: str =
 
 # --- Streamlit UI ---
 
-st.set_page_config(page_title="Image Generator", page_icon="🖼️")
-st.title("Generate & Upload an Image")
+st.set_page_config(page_title="Image Editor", page_icon="🎨")
+st.title("Edit & Upload an Image")
 
-prompt = st.text_area("Describe the image you want to create", height=120,
-                       placeholder="e.g. a cat riding a skateboard on the moon")
+uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg", "webp"])
+prompt = st.text_area("Describe how you want to edit this image", height=120,
+                       placeholder="e.g. make the sky sunset orange and add birds flying")
 bucket = st.text_input("Supabase bucket", value=BUCKET_NAME)
 
-if st.button("Generate & Upload", type="primary", disabled=not prompt.strip()):
-    with st.spinner("Generating image..."):
-        paths = generate_image(prompt)
-        local_path = paths[0]
+if uploaded_file is not None:
+    st.image(uploaded_file, caption="Original image")
 
-    with st.spinner("Uploading to Supabase..."):
-        dest_path = f"{uuid.uuid4().hex}{os.path.splitext(local_path)[1]}"
-        public_url = upload_file(local_path, bucket_name=bucket, dest_path=dest_path)
+can_submit = uploaded_file is not None and bool(prompt.strip())
+
+if st.button("Edit & Upload", type="primary", disabled=not can_submit):
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    upload_ext = os.path.splitext(uploaded_file.name)[1] or ".png"
+    local_input_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4().hex}{upload_ext}")
+    with open(local_input_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    with st.spinner("Editing image..."):
+        paths = edit_image(prompt, local_input_path)
+        local_edited_path = paths[0]
+
+    with st.spinner("Uploading original and edited images to Supabase..."):
+        original_dest_path = f"{uuid.uuid4().hex}{upload_ext}"
+        original_public_url = upload_file(local_input_path, bucket_name=bucket, dest_path=original_dest_path)
+
+        edited_dest_path = f"{uuid.uuid4().hex}{os.path.splitext(local_edited_path)[1]}"
+        edited_public_url = upload_file(local_edited_path, bucket_name=bucket, dest_path=edited_dest_path)
 
     st.success("Done!")
-    st.image(local_path, caption=prompt)
-    st.write("Public URL:", public_url)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Original")
+        st.image(local_input_path)
+        st.write("Public URL:", original_public_url)
+    with col2:
+        st.subheader("Edited")
+        st.image(local_edited_path, caption=prompt)
+        st.write("Public URL:", edited_public_url)
