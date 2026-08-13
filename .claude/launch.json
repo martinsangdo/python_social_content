@@ -12,6 +12,12 @@
       "runtimeExecutable": "python3.10",
       "runtimeArgs": ["-m", "streamlit", "run", "chat_/app.py", "--server.headless", "true", "--server.port", "8501"],
       "port": 8501
+    },
+    {
+      "name": "brand_layout_images",
+      "runtimeExecutable": "python3.10",
+      "runtimeArgs": ["-m", "streamlit", "run", "brand_layout_images/app.py", "--server.headless", "true", "--server.port", "8503"],
+      "port": 8503
     }
   ]
 }
