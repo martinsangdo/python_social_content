@@ -31,7 +31,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     )
 
 # %%
-BUCKET_NAME = "media"
+BUCKET_NAME = "my_bucket_1"
 
 
 # %%
