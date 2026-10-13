@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gem Match</title>
+  <style>
+    :root {
+      --bg: #14122b;
+      --panel: #1f1c42;
+      --cell: #2a2658;
+      --text: #f2f0ff;
+      --muted: #9b97c9;
+      --accent: #ffd23f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    h1 { margin: 8px 0 0; font-size: 1.8rem; }
+    .hud { display: flex; gap: 12px; }
+    .stat {
+      min-width: 88px;
+      padding: 8px 12px;
+      text-align: center;
+      background: var(--panel);
+      border-radius: 10px;
+    }
+    .stat span { display: block; font-size: .75rem; color: var(--muted); text-transform: uppercase; }
+    .stat strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+    #message { min-height: 1.5em; margin: 0; color: var(--accent); text-align: center; }
+    .board-wrap { position: relative; width: min(100%, 480px); }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      padding: 8px;
+      background: var(--panel);
+      border-radius: 14px;
+    }
+    .cell {
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      background: var(--cell);
+      border: 0;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .cell:focus-visible { outline: 3px solid #fff; }
+    .cell.selected { outline: 3px solid var(--accent); background: #3a3578; }
+    .gem { width: 74%; height: 74%; transition: transform .25s ease, opacity .25s ease; }
+    .g0 { background: #ff4d6d; border-radius: 50%; }
+    .g1 { background: #4cc9f0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+    .g2 { background: #52d681; border-radius: 18%; }
+    .g3 { background: #ffd23f; clip-path: polygon(50% 4%, 100% 92%, 0 92%); }
+    .g4 { background: #b388ff; clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%); }
+    .g5 {
+      background: #ff9f45;
+      clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    }
+    .cell.pop .gem { transform: scale(0); opacity: 0; }
+    .cell.drop .gem { animation: drop .3s ease-out; }
+    .cell.shake .gem { animation: shake .25s; }
+    @keyframes drop { from { transform: translateY(-140%); opacity: .5; } }
+    @keyframes shake {
+      25% { transform: translateX(-12%); }
+      75% { transform: translateX(12%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .gem { transition: none; }
+      .cell.drop .gem, .cell.shake .gem { animation: none; }
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: 12px;
+      text-align: center;
+      background: rgba(20, 18, 43, .88);
+      border-radius: 14px;
+    }
+    .overlay[hidden] { display: none; }
+    .overlay h2 { margin: 0; font-size: 2rem; }
+    .overlay p { margin: 0; }
+    button.primary {
+      padding: 10px 20px;
+      font: inherit;
+      font-weight: 600;
+      color: #14122b;
+      background: var(--accent);
+      border: 0;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .help { max-width: 480px; margin: 0; color: var(--muted); text-align: center; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <h1>Gem Match</h1>
+
+  <div class="hud">
+    <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+    <div class="stat"><span>Moves</span><strong id="moves">20</strong></div>
+    <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+  </div>
+
+  <p id="message" aria-live="polite"></p>
+
+  <div class="board-wrap">
+    <div id="board" role="grid" aria-label="Gem board"></div>
+    <div id="gameover" class="overlay" hidden>
+      <h2>Game over</h2>
+      <p id="final"></p>
+      <button class="primary" id="again">Play again</button>
+    </div>
+  </div>
+
+  <button class="primary" id="restart">New game</button>
+  <p class="help">Tap a gem, then tap a neighbour to swap. Line up 3 or more of the same gem in a row or column. You have 20 moves.</p>
+
+  <script>
+    const SIZE = 8;
+    const START_MOVES = 20;
+    const NAMES = ['red circle', 'blue diamond', 'green square', 'yellow triangle', 'purple hexagon', 'orange star'];
+
+    const $ = (id) => document.getElementById(id);
+    const boardEl = $('board');
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    let board = [];
+    let selected = null;
+    let score = 0;
+    let moves = START_MOVES;
+    let best = 0;
+    let busy = false;
+
+    try { best = Number(localStorage.getItem('gem-best')) || 0; } catch (e) { /* storage blocked */ }
+
+    function setMessage(text) { $('message').textContent = text; }
+
+    function updateHud() {
+      $('score').textContent = score;
+      $('moves').textContent = moves;
+      $('best').textContent = best;
+    }
+
+    // dropRows: Map of column -> lowest cleared row; gems at or above it animate falling in.
+    function render(dropRows = new Map()) {
+      const cells = [];
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          const kind = board[r][c];
+          const cell = document.createElement('button');
+          cell.className = 'cell';
+          cell.dataset.r = r;
+          cell.dataset.c = c;
+          cell.setAttribute('aria-label', `row ${r + 1}, column ${c + 1}, ${NAMES[kind]}`);
+          if (selected && selected.r === r && selected.c === c) {
+            cell.classList.add('selected');
+            cell.setAttribute('aria-pressed', 'true');
+          }
+          if (dropRows.has(c) && r <= dropRows.get(c)) cell.classList.add('drop');
+          const gem = document.createElement('span');
+          gem.className = `gem g${kind}`;
+          cell.append(gem);
+          cells.push(cell);
+        }
+      }
+      boardEl.replaceChildren(...cells);
+    }
+
+    const cellAt = (r, c) => boardEl.children[r * SIZE + c];
+
+    function swap(a, b) {
+      [board[a.r][a.c], board[b.r][b.c]] = [board[b.r][b.c], board[a.r][a.c]];
+    }
+
+    async function post(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function newGame() {
+      busy = true;
+      selected = null;
+      score = 0;
+      moves = START_MOVES;
+      $('gameover').hidden = true;
+      setMessage('Shuffling gems...');
+      updateHud();
+      try {
+        board = (await post('/api/new')).board;
+        render();
+        setMessage('');
+      } catch (e) {
+        setMessage('Could not reach the server. Press "New game" to retry.');
+      }
+      busy = false;
+    }
+
+    async function trySwap(a, b) {
+      busy = true;
+      const before = board.map((row) => row.slice());
+      swap(a, b);
+      render();
+      try {
+        const res = await post('/api/move', {
+          board: before,
+          a: { row: a.r, col: a.c },
+          b: { row: b.r, col: b.c },
+        });
+        if (!res.valid) {
+          cellAt(a.r, a.c).classList.add('shake');
+          cellAt(b.r, b.c).classList.add('shake');
+          await sleep(300);
+          board = before;
+          render();
+          setMessage('No match there - try another swap.');
+        } else {
+          await playSteps(res);
+        }
+      } catch (e) {
+        board = before;
+        render();
+        setMessage('Connection problem - try that move again.');
+      }
+      busy = false;
+    }
+
+    async function playSteps(res) {
+      setMessage('');
+      for (const step of res.steps) {
+        for (const [r, c] of step.cleared) cellAt(r, c).classList.add('pop');
+        await sleep(280);
+        const dropRows = new Map();
+        for (const [r, c] of step.cleared) dropRows.set(c, Math.max(r, dropRows.get(c) ?? -1));
+        board = step.board;
+        score += step.points;
+        updateHud();
+        render(dropRows);
+        await sleep(320);
+      }
+      moves -= 1;
+      if (res.steps.length > 1) setMessage(`Combo x${res.steps.length}!`);
+      if (res.shuffled) {
+        board = res.board;
+        render();
+        setMessage('No moves left - fresh board!');
+      }
+      if (moves === 0) endGame();
+      else updateHud();
+    }
+
+    function endGame() {
+      if (score > best) {
+        best = score;
+        try { localStorage.setItem('gem-best', String(best)); } catch (e) { /* storage blocked */ }
+      }
+      updateHud();
+      $('final').textContent = `Final score: ${score} (best ${best})`;
+      $('gameover').hidden = false;
+      $('again').focus();
+    }
+
+    boardEl.addEventListener('click', (event) => {
+      const cell = event.target.closest('.cell');
+      if (!cell || busy || moves === 0) return;
+      const pos = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
+      const first = selected;
+      if (first && Math.abs(first.r - pos.r) + Math.abs(first.c - pos.c) === 1) {
+        selected = null;
+        trySwap(first, pos);
+        return;
+      }
+      selected = first && first.r === pos.r && first.c === pos.c ? null : pos;
+      render();
+    });
+
+    $('restart').addEventListener('click', newGame);
+    $('again').addEventListener('click', newGame);
+
+    updateHud();
+    newGame();
+  </script>
+</body>
+</html>
